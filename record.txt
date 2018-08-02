@@ -1,0 +1,12 @@
+
+//for rgbd
+
+python associate.py    ../rgbd_dataset_freiburg3_long_office_household/rgb.txt  ../rgbd_dataset_freiburg3_long_office_household/depth.txt  > associations.txt
+
+./Examples/RGB-D/rgbd_tum Vocabulary/ORBvoc.txt Examples/RGB-D/TUM3.yaml   ../rgbd_dataset_freiburg3_long_office_household/  ./associations.txt
+
+
+
+//mono
+
+./Examples/Monocular/mono_tum   Vocabulary/ORBvoc.txt Examples/Monocular/TUM3.yaml   ../rgbd_dataset_freiburg3_long_office_household/
