@@ -257,6 +257,7 @@ void LocalMapping::CreateNewMapPoints()
     int nn = 10;
     if(mbMonocular)
         nn=20;
+	//当前关键帧的10
     const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
     ORBmatcher matcher(0.6,false);
@@ -284,14 +285,14 @@ void LocalMapping::CreateNewMapPoints()
     // Search matches with epipolar restriction and triangulate
     for(size_t i=0; i<vpNeighKFs.size(); i++)
     {
-        if(i>0 && CheckNewKeyFrames())//？？？？？？？？
+        if(i>0 && CheckNewKeyFrames())//
             return;
 
         KeyFrame* pKF2 = vpNeighKFs[i];
 
         // Check first that baseline is not too short
         
-        // 邻接的关键帧在世界坐标系中的坐标
+        // 共视关键帧在世界坐标系中的坐标
         cv::Mat Ow2 = pKF2->GetCameraCenter();
 		
         // 基线向量，两个关键帧间的相机位移向量

@@ -168,7 +168,7 @@ bool ORBmatcher::CheckDistEpipolarLine(const cv::KeyPoint &kp1,const cv::KeyPoin
     // 尺度越大，范围应该越大。
     // 金字塔最底层一个像素就占一个像素，在倒数第二层，一个像素等于最底层1.2个像素（假设金字塔尺度为1.2）
 
-    return dsqr<3.84*pKF2->mvLevelSigma2[kp2.octave];
+    return dsqr<3.84*pKF2->mvLevelSigma2[kp2.octave];//这里的3.84也是根据卡方分布
 }
 
 //关键帧与普通帧进行特征点的匹配。
@@ -685,6 +685,15 @@ int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &
     return nmatches;
 }
 
+//方法：
+//前提：两个帧是共视帧 
+//已知两个帧的位姿，则可以计算出两帧之间的基本矩阵
+//然后通过特征词进行匹配，pKF1中不存在MapPoint的点K1，在pKF2中找到最佳的匹配K2
+//通过K1和F12，可以得到K1在第二关键帧中的对极线，然后看K2到对极线的距离
+//如果小于一定的阈值，则认为是正确的匹配
+
+
+
 
 //通过极线约束，将pKF1中没有对应MapPoint的特征点与pKF2中没有产生MapPoint的点
 //查找最佳匹配。返回匹配对
@@ -695,7 +704,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     const DBoW2::FeatureVector &vFeatVec2 = pKF2->mFeatVec;
 
     //Compute epipole in second image
-    cv::Mat Cw = pKF1->GetCameraCenter();
+    cv::Mat Cw  = pKF1->GetCameraCenter();
     cv::Mat R2w = pKF2->GetRotation();
     cv::Mat t2w = pKF2->GetTranslation();
 	
@@ -704,7 +713,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
 	//相机模型z[u
 	//          v   = Kp
 	//          1]
-    //C1的原点，在C2的图像平面上投影的像素坐标
+    //C1的原点，在C2的图像平面上投影的像素坐标（实际是极点的像素坐标）
     const float invz = 1.0f/C2.at<float>(2);
     const float ex =pKF2->fx*C2.at<float>(0)*invz+pKF2->cx;
     const float ey =pKF2->fy*C2.at<float>(1)*invz+pKF2->cy;
@@ -737,10 +746,10 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
         if(f1it->first == f2it->first)//相同的节点号
         {
         
-		    // 步骤2：遍历该node节点下(f1it->first)的所有特征点
+		    // 步骤2：遍历该node节点下(f1it->first)的所有描述子
             for(size_t i1=0, iend1=f1it->second.size(); i1<iend1; i1++)
             {
-			    // 获取pKF1中属于该node节点的所有特征点索引
+			    // 获取pKF1中属于该node节点的所有特征点索引(也是描述子索引)
                 const size_t idx1 = f1it->second[i1];
                 
                 // 步骤2.1：通过特征点索引idx1在pKF1中取出对应的MapPoint
@@ -750,7 +759,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                 if(pMP1)//该特征点对应的MapPoint已经存在
                     continue;
 
-                const bool bStereo1 = pKF1->mvuRight[idx1]>=0;
+                const bool bStereo1 = pKF1->mvuRight[idx1]>=0;//立体视觉
 
                 if(bOnlyStereo)
                     if(!bStereo1)
@@ -798,6 +807,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
                             continue;
                     }
                     // 步骤4：计算特征点kp2到 kp1极线（kp1对应pKF2的一条极线）的距离是否小于阈值
+                    //当距离小于阈值的时候，说明匹配是成功的
                     if(CheckDistEpipolarLine(kp1,kp2,F12,pKF2))
                     {
                         bestIdx2 = idx2;
@@ -866,7 +876,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     {
         if(vMatches12[i]<0)
             continue;
-        vMatchedPairs.push_back(make_pair(i,vMatches12[i]));
+        vMatchedPairs.push_back(make_pair(i,vMatches12[i]));//记录匹配的特征点对
     }
 
     return nmatches;

@@ -663,6 +663,7 @@ cv::Mat KeyFrame::UnprojectStereo(int i)
     else
         return cv::Mat();
 }
+
 //统计本关键帧观测到的所有空间点的深度(z值)，并对深度进行排序，然后取中值
 float KeyFrame::ComputeSceneMedianDepth(const int q)
 {
