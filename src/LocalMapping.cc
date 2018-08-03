@@ -360,23 +360,25 @@ void LocalMapping::CreateNewMapPoints()
 			//相机坐标系->世界坐标系
             cv::Mat ray1 = Rwc1*xn1; 
             cv::Mat ray2 = Rwc2*xn2;
-			//视差角的余弦值
+			//两个位姿视差角的余弦值,两个位姿，看同一个空间点，两个摄像机光轴之间的夹角
             const float cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
             float cosParallaxStereo = cosParallaxRays+1;
             float cosParallaxStereo1 = cosParallaxStereo;
             float cosParallaxStereo2 = cosParallaxStereo;
 
-            if(bStereo1)
+            if(bStereo1)//在rgbd或者双目的情况下，近似空间点在双目之间的视差角
                 cosParallaxStereo1 = cos(2*atan2(mpCurrentKeyFrame->mb/2,mpCurrentKeyFrame->mvDepth[idx1]));
 			else if(bStereo2)
                 cosParallaxStereo2 = cos(2*atan2(pKF2->mb/2,pKF2->mvDepth[idx2]));
-
+            //双目视差角，其实是最大的那个角
             cosParallaxStereo = min(cosParallaxStereo1,cosParallaxStereo2);
 
-            cv::Mat x3D;
+            cv::Mat x3D;//特征点的世界坐标
+			//如果两个位姿之间的视差角 大于 双目视差角 。则使用三角法恢复空间点
             if(cosParallaxRays<cosParallaxStereo && cosParallaxRays>0 && (bStereo1 || bStereo2 || cosParallaxRays<0.9998))
             {
                 // Linear Triangulation Method
+                //《对极几何》中的三角法恢复深度
                 cv::Mat A(4,4,CV_32F);
                 A.row(0) = xn1.at<float>(0)*Tcw1.row(2)-Tcw1.row(0);
                 A.row(1) = xn1.at<float>(1)*Tcw1.row(2)-Tcw1.row(1);
@@ -391,7 +393,7 @@ void LocalMapping::CreateNewMapPoints()
                 if(x3D.at<float>(3)==0)
                     continue;
                 // Euclidean coordinates
-                x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
+                x3D = x3D.rowRange(0,3)/x3D.at<float>(3);//归一化
 
             }
 			//视差角大时用双目恢复3D点（双目以及深度有效）
@@ -424,17 +426,16 @@ void LocalMapping::CreateNewMapPoints()
             const float y1 = Rcw1.row(1).dot(x3Dt)+tcw1.at<float>(1);
             const float invz1 = 1.0/z1;
             //计算冲投影误差
-            //?????????????????
-            if(!bStereo1)
+            if(!bStereo1)//单目
             {
                 float u1 = fx1*x1*invz1+cx1;
                 float v1 = fy1*y1*invz1+cy1;
                 float errX1 = u1 - kp1.pt.x;
                 float errY1 = v1 - kp1.pt.y;
-                if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1)
+                if((errX1*errX1+errY1*errY1)>5.991*sigmaSquare1)//卡方检验
                     continue;
             }
-            else
+            else//双目或者rgbd
             {
                 float u1 = fx1*x1*invz1+cx1;
                 float u1_r = u1 - mpCurrentKeyFrame->mbf*invz1;
@@ -471,9 +472,9 @@ void LocalMapping::CreateNewMapPoints()
                 if((errX2*errX2+errY2*errY2+errX2_r*errX2_r)>7.8*sigmaSquare2)
                     continue;
             }
+			
             //这里尺度的连续性是如何检测的？？？？？
             //Check scale consistency
-
 			// 世界坐标系下，3D点与相机间的向量，方向由相机指向3D点
             cv::Mat normal1 = x3D-Ow1;
             float dist1 = cv::norm(normal1);

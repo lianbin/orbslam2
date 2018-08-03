@@ -882,6 +882,7 @@ int ORBmatcher::SearchForTriangulation(KeyFrame *pKF1, KeyFrame *pKF2, cv::Mat F
     return nmatches;
 }
 
+
 int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const float th)
 {
     cv::Mat Rcw = pKF->GetRotation();
@@ -906,7 +907,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
         if(!pMP)
             continue;
 
-        if(pMP->isBad() || pMP->IsInKeyFrame(pKF))
+        if(pMP->isBad() || pMP->IsInKeyFrame(pKF))//这句话很重要，是否当前MapPoint在关键帧当中
             continue;
 
         cv::Mat p3Dw = pMP->GetWorldPos();
@@ -975,7 +976,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
             if(kpLevel<nPredictedLevel-1 || kpLevel>nPredictedLevel)
                 continue;
 
-            if(pKF->mvuRight[idx]>=0)
+            if(pKF->mvuRight[idx]>=0)//rgbd
             {
                 // Check reprojection error in stereo
                 const float &kpx = kp.pt.x;
@@ -989,7 +990,7 @@ int ORBmatcher::Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const
                 if(e2*pKF->mvInvLevelSigma2[kpLevel]>7.8)
                     continue;
             }
-            else
+            else //单目
             {
             
                 const float &kpx = kp.pt.x;
