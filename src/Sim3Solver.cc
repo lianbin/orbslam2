@@ -126,7 +126,7 @@ void Sim3Solver::SetRansacParameters(double probability, int minInliers, int max
 
     // Adjust Parameters according to number of correspondences
     //内点数与总的MapPoints的比值
-    float epsilon = (float)mRansacMinInliers/N;
+    float epsilon = (float)mRansacMinInliers/N; //内点的概率
 
     // Set RANSAC iterations according to probability, epsilon, and max iterations
     int nIterations;
@@ -140,6 +140,7 @@ void Sim3Solver::SetRansacParameters(double probability, int minInliers, int max
 
     mnIterations = 0;
 }
+
 
 cv::Mat Sim3Solver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInliers, int &nInliers)
 {
@@ -178,7 +179,7 @@ cv::Mat Sim3Solver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInli
             mvX3Dc1[idx].copyTo(P3Dc1i.col(i));//每一列存储一个3D点(摄像头坐标系下)
             mvX3Dc2[idx].copyTo(P3Dc2i.col(i));
             //保证选取的内点的唯一性
-            vAvailableIndices[randi] = vAvailableIndices.back();
+            vAvailableIndices[randi] = vAvailableIndices.back();//
             vAvailableIndices.pop_back();
         }
 
@@ -358,7 +359,7 @@ void Sim3Solver::CheckInliers()
         cv::Mat dist1 = mvP1im1[i]-vP2im1[i];
         cv::Mat dist2 = vP1im2[i]-mvP2im2[i];
 
-        const float err1 = dist1.dot(dist1); //方差
+        const float err1 = dist1.dot(dist1); //误差的平方
         const float err2 = dist2.dot(dist2);
 
         if(err1<mvnMaxError1[i] && err2<mvnMaxError2[i])

@@ -230,7 +230,7 @@ bool LoopClosing::DetectLoop()
     {
         return true;
     }
-
+    //下面两行是没有用的，永远都不可能执行到
     mpCurrentKF->SetErase();
     return false;
 }

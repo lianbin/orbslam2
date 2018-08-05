@@ -76,7 +76,7 @@ public:
   }
 };
 
-
+//误差维度 误差数据类型 空间点顶点类型 位姿定点类型
 class  EdgeSE3ProjectXYZ: public  BaseBinaryEdge<2, Vector2d, VertexSBAPointXYZ, VertexSE3Expmap>{
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -173,7 +173,7 @@ public:
 };
 
 
-//主要用于双目 但是兼任3D(在虚拟一个右摄像头的情况下)
+//主要用于双目 但是兼容3D(在虚拟一个右摄像头的情况下)
 class  EdgeStereoSE3ProjectXYZOnlyPose: public  BaseUnaryEdge<3, Vector3d, VertexSE3Expmap>{
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

@@ -567,7 +567,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         KeyFrame* pKFi = *lit;
         g2o::VertexSE3Expmap * vSE3 = new g2o::VertexSE3Expmap();
         vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));//位姿作为顶点
-        vSE3->setId(pKFi->mnId);
+        vSE3->setId(pKFi->mnId);//注意 顶点的ID。只是一个顶点的编号。可以不是顺序的。只是为了方便操作顶点
         vSE3->setFixed(pKFi->mnId==0);//第0个位姿是确定的
         optimizer.addVertex(vSE3);
         if(pKFi->mnId>maxKFid)
@@ -616,7 +616,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         MapPoint* pMP = *lit;
         g2o::VertexSBAPointXYZ* vPoint = new g2o::VertexSBAPointXYZ();
         vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
-        int id = pMP->mnId+maxKFid+1;//接着Pose的ID继续按顺序累加
+        int id = pMP->mnId+maxKFid+1;//防止ID号重复
         vPoint->setId(id);
         vPoint->setMarginalized(true);//设置该点在解方程的时候进行Schur消元
         optimizer.addVertex(vPoint);

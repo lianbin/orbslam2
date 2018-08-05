@@ -1394,7 +1394,7 @@ int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint*> &
             int idx1 = vnMatch2[idx2];//又通过idx2得到匹配的PK1的特征点编号
             if(idx1==i1)//说明匹配完全正确
             {
-                //下标是PK1的的特征点编号，存储的是匹配的PK2的特征点编号
+                //下标是PK1的的特征点编号，存储的是匹配的PK2的特征点编号对应的Mappoint
                 vpMatches12[i1] = vpMapPoints2[idx2];//
                 nFound++;//匹配点的个数
             }
