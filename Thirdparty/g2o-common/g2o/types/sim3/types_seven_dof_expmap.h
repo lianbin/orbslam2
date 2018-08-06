@@ -51,7 +51,7 @@ namespace g2o {
     virtual void setToOriginImpl() {
       _estimate = Sim3();
     }
-
+    //相加函数的本质是更新优化变量 Xi=δx+Xi-1
     virtual void oplusImpl(const double* update_)
     {
       Eigen::Map<Vector7d> update(const_cast<double*>(update_));

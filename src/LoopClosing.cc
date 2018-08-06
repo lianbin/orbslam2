@@ -512,7 +512,7 @@ void LoopClosing::CorrectLoop()
                 Eigen::Matrix<double,3,1> eigCorrectedP3Dw = g2oCorrectedSwi.map(g2oSiw.map(eigP3Dw));
 
                 cv::Mat cvCorrectedP3Dw = Converter::toCvMat(eigCorrectedP3Dw);
-                pMPi->SetWorldPos(cvCorrectedP3Dw); //更新MapPoint的世界坐标点
+                pMPi->SetWorldPos(cvCorrectedP3Dw);       //更新MapPoint的世界坐标点
                 pMPi->mnCorrectedByKF = mpCurrentKF->mnId;//通过当前帧进行校正
                 pMPi->mnCorrectedReference = pKFi->mnId;  //
                 pMPi->UpdateNormalAndDepth();
