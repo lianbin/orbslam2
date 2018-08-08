@@ -143,6 +143,7 @@ void BaseBinaryEdge<D, E, VertexXiType, VertexXjType>::linearizeOplus(JacobianWo
   linearizeOplus();
 }
 
+//一条边对本边连接的顶点(优化变量)求偏导
 template <int D, typename E, typename VertexXiType, typename VertexXjType>
 void BaseBinaryEdge<D, E, VertexXiType, VertexXjType>::linearizeOplus()
 {
