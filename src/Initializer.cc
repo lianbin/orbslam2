@@ -55,7 +55,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
     {
         if(vMatches12[i]>=0)
         {
-            mvMatches12.push_back(make_pair(i,vMatches12[i]));
+            mvMatches12.push_back(make_pair(i,vMatches12[i]));//存储匹配对分别在两个帧中的特征点编号
             mvbMatched1[i]=true;
         }
         else
@@ -228,7 +228,7 @@ void Initializer::FindFundamental(vector<bool> &vbMatchesInliers, float &score, 
         cv::Mat Fn = ComputeF21(vPn1i,vPn2i);
 
         F21i = T2t*Fn*T1;
-
+        //H21i = T2inv*Hn*T1;
         currentScore = CheckFundamental(F21i, vbCurrentInliers, mSigma);
 
         if(currentScore>score)
@@ -396,7 +396,7 @@ float Initializer::CheckHomography(const cv::Mat &H21, const cv::Mat &H12, vecto
         if(chiSquare2>th)
             bIn = false;
         else
-            score += th - chiSquare2;
+            score += th - chiSquare2;//值越大，说明chiSquare2越小。说明误差越小
 
         if(bIn)
             vbMatchesInliers[i]=true;
@@ -463,7 +463,8 @@ float Initializer::CheckFundamental(const cv::Mat &F21, vector<bool> &vbMatchesI
             score += thScore - chiSquare1;
 
         // Reprojection error in second image
-        // l1 =x2tF21=(a1,b1,c1)
+        // l1 =F21^T*x2=(a1,b1,c1)
+		//参考多视图集合 p164
 
         const float a1 = f11*u2+f21*v2+f31;
         const float b1 = f12*u2+f22*v2+f32;
@@ -769,6 +770,7 @@ void Initializer::Triangulate(const cv::KeyPoint &kp1, const cv::KeyPoint &kp2, 
     x3D = x3D.rowRange(0,3)/x3D.at<float>(3);
 }
 
+
 void Initializer::Normalize(const vector<cv::KeyPoint> &vKeys, vector<cv::Point2f> &vNormalizedPoints, cv::Mat &T)
 {
     float meanX = 0;
@@ -880,7 +882,8 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
         // Check depth in front of first camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         if(p3dC1.at<float>(2)<=0 && cosParallax<0.99998)
-            continue;
+            continue;//？？？这里以及，包括下面的都应该加上vbGood[vMatches12[i].first]=false？
+                     // 或者vbGood的值默认都是false，则只需要置true
 
         // Check depth in front of second camera (only if enough parallax, as "infinite" points can easily go to negative depth)
         cv::Mat p3dC2 = R*p3dC1+t;
@@ -921,10 +924,10 @@ int Initializer::CheckRT(const cv::Mat &R, const cv::Mat &t, const vector<cv::Ke
 
     if(nGood>0)
     {
-        sort(vCosParallax.begin(),vCosParallax.end());
+        sort(vCosParallax.begin(),vCosParallax.end());//默认升序排列
 
         size_t idx = min(50,int(vCosParallax.size()-1));
-        parallax = acos(vCosParallax[idx])*180/CV_PI;//计算视差角
+        parallax = acos(vCosParallax[idx])*180/CV_PI;//计算视差角，用角度来表示
     }
     else
         parallax=0;
