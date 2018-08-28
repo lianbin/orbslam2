@@ -1491,7 +1491,7 @@ bool Tracking::Relocalization()
             }
             else
             {
-                //PNP求解
+                //PNP求解器
                 PnPsolver* pSolver = new PnPsolver(mCurrentFrame,vvpMapPointMatches[i]);
                 pSolver->SetRansacParameters(0.99,10,300,4,0.5,5.991);
                 vpPnPsolvers[i] = pSolver;

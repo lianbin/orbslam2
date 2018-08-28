@@ -84,13 +84,13 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
         {
             if(!pMP->isBad())
             {
-                const cv::KeyPoint &kp = F.mvKeysUn[i];//观测
+                const cv::KeyPoint &kp = F.mvKeysUn[i];//对应的2d点。
 
                 mvP2D.push_back(kp.pt);
                 mvSigma2.push_back(F.mvLevelSigma2[kp.octave]);
 
                 cv::Mat Pos = pMP->GetWorldPos();
-                mvP3Dw.push_back(cv::Point3f(Pos.at<float>(0),Pos.at<float>(1), Pos.at<float>(2)));
+                mvP3Dw.push_back(cv::Point3f(Pos.at<float>(0),Pos.at<float>(1), Pos.at<float>(2)));//3D点，
 
                 mvKeyPointIndices.push_back(i);
                 mvAllIndices.push_back(idx);               
@@ -175,7 +175,7 @@ cv::Mat PnPsolver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInlie
     // mRansacMinSet为每次RANSAC需要的特征点数，默认为4组3D-2D对应点
     set_maximum_number_of_correspondences(mRansacMinSet);
 
-    if(N<mRansacMinInliers)
+    if(N<mRansacMinInliers)//对应点个数小于内点的个数
     {
         bNoMore = true;
         return cv::Mat();
@@ -193,7 +193,7 @@ cv::Mat PnPsolver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInlie
         vAvailableIndices = mvAllIndices;
 
         // Get min set of points
-        for(short i = 0; i < mRansacMinSet; ++i)
+        for(short i = 0; i < mRansacMinSet; ++i)//mRansacMinSet= 4
         {
             int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size()-1);
 
@@ -211,7 +211,7 @@ cv::Mat PnPsolver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInlie
         // Check inliers
         CheckInliers();
 
-        if(mnInliersi>=mRansacMinInliers)
+        if(mnInliersi>=mRansacMinInliers)//如果内点个数大于ransan要求的最小内点个数
         {
             // If it is the best solution so far, save it
             if(mnInliersi>mnBestInliers)
@@ -271,7 +271,7 @@ bool PnPsolver::Refine()
     {
         if(mvbBestInliers[i])
         {
-            vIndices.push_back(i);
+            vIndices.push_back(i);//编号
         }
     }
 
@@ -326,7 +326,7 @@ void PnPsolver::CheckInliers()
         double ue = uc + fu * Xc * invZc;
         double ve = vc + fv * Yc * invZc;
 
-        float distX = P2D.x-ue;
+        float distX = P2D.x-ue;//重投影误差
         float distY = P2D.y-ve;
 
         float error2 = distX*distX+distY*distY;
@@ -353,10 +353,12 @@ void PnPsolver::set_maximum_number_of_correspondences(int n)
     if (pcs != 0) delete [] pcs;
 
     maximum_number_of_correspondences = n;
-    pws = new double[3 * maximum_number_of_correspondences];
-    us = new double[2 * maximum_number_of_correspondences];
+    pws = new double[3 * maximum_number_of_correspondences];   //存储3D
+    us = new double[2 * maximum_number_of_correspondences];    //存储2D
+    //每个点用四个控制点表示，每个控制点带一个系数。
+    //所以是4*对应点个数
     alphas = new double[4 * maximum_number_of_correspondences];
-    pcs = new double[3 * maximum_number_of_correspondences];
+    pcs = new double[3 * maximum_number_of_correspondences];//3D点在相机坐标系下的坐标
   }
 }
 
@@ -365,6 +367,7 @@ void PnPsolver::reset_correspondences(void)
   number_of_correspondences = 0;
 }
 
+//将对应点添加到EPNP计算中
 void PnPsolver::add_correspondence(double X, double Y, double Z, double u, double v)
 {
   pws[3 * number_of_correspondences    ] = X;
@@ -380,6 +383,8 @@ void PnPsolver::add_correspondence(double X, double Y, double Z, double u, doubl
 void PnPsolver::choose_control_points(void)
 {
   // Take C0 as the reference points centroid:
+  //首先计算世界坐标系中的控制点
+  //将3D的质心，作为C0控制点
   cws[0][0] = cws[0][1] = cws[0][2] = 0;
   for(int i = 0; i < number_of_correspondences; i++)
     for(int j = 0; j < 3; j++)
@@ -396,12 +401,13 @@ void PnPsolver::choose_control_points(void)
   CvMat PW0tPW0 = cvMat(3, 3, CV_64F, pw0tpw0);
   CvMat DC      = cvMat(3, 1, CV_64F, dc);
   CvMat UCt     = cvMat(3, 3, CV_64F, uct);
-
+  //3D点0均值化
   for(int i = 0; i < number_of_correspondences; i++)
     for(int j = 0; j < 3; j++)
       PW0->data.db[3 * i + j] = pws[3 * i + j] - cws[0][j];
-
+  //3D点协方差矩阵
   cvMulTransposed(PW0, &PW0tPW0, 1);
+  //SVD分解(PCA)
   cvSVD(&PW0tPW0, &DC, &UCt, 0, CV_SVD_MODIFY_A | CV_SVD_U_T);
 
   cvReleaseMat(&PW0);
@@ -409,10 +415,11 @@ void PnPsolver::choose_control_points(void)
   for(int i = 1; i < 4; i++) {
     double k = sqrt(dc[i - 1] / number_of_correspondences);
     for(int j = 0; j < 3; j++)
-      cws[i][j] = cws[0][j] + k * uct[3 * (i - 1) + j];
+      cws[i][j] = cws[0][j] + k * uct[3 * (i - 1) + j];//控制点坐标
   }
 }
 
+//计算世界坐标系下，每个点对应的4个控制点的系数
 void PnPsolver::compute_barycentric_coordinates(void)
 {
   double cc[3 * 3], cc_inv[3 * 3];
@@ -478,6 +485,7 @@ void PnPsolver::compute_pcs(void)
       pc[j] = a[0] * ccs[0][j] + a[1] * ccs[1][j] + a[2] * ccs[2][j] + a[3] * ccs[3][j];
   }
 }
+
 
 double PnPsolver::compute_pose(double R[3][3], double t[3])
 {
