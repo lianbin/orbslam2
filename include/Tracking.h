@@ -37,9 +37,9 @@
 #include "Initializer.h"
 #include "MapDrawer.h"
 #include "System.h"
-
 #include <mutex>
 
+#include "ParticleFilter.h"
 namespace ORB_SLAM2
 {
 
@@ -143,6 +143,7 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
+	cv::Mat rotationMatrixToEulerAngles(cv::Mat &R);
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
@@ -212,8 +213,10 @@ protected:
 
     //Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
-
     list<MapPoint*> mlpTemporalPoints;
+	
+	std::vector<ParticleFilter *> particleFilters_;
+	double previousStamp_; //lb add 
 };
 
 } //namespace ORB_SLAM

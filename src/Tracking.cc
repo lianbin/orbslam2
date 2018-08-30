@@ -37,6 +37,7 @@
 
 #include<mutex>
 
+#include "ParticleFilter.h"
 
 using namespace std;
 
@@ -151,6 +152,29 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;   //深度图系数的倒数
     }
+
+    int _filteringStrategy = 0;
+	if(_filteringStrategy == 0)//初始化粒子滤波
+	{
+		// Initialize the Particle filters
+		particleFilters_.resize(6);
+		for(unsigned int i = 0; i<particleFilters_.size(); ++i)
+		{
+			if(i<3)//前三项是平移
+			{
+				particleFilters_[i] = new ParticleFilter(400, 0.002, 100);
+			}
+			else//后三项是旋转
+			{
+				particleFilters_[i] = new ParticleFilter(400, 0.002, 100);
+			}
+		}
+	}
+	else if(_filteringStrategy == 1)
+	{
+		//initKalmanFilter();
+	}
+
 
 }
 
@@ -434,6 +458,9 @@ void Tracking::Track()
         // If tracking were good, check if we insert a keyframe
         if(bOK)
         {
+            //获取前后两帧之间的时间差
+		    double dt = previousStamp_>0.0f?mCurrentFrame.mTimeStamp - previousStamp_:0.0;
+			
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
@@ -441,13 +468,65 @@ void Tracking::Track()
                 cv::Mat LastTwc = cv::Mat::eye(4,4,CV_32F);
                 mLastFrame.GetRotationInverse().copyTo(LastTwc.rowRange(0,3).colRange(0,3));
                 mLastFrame.GetCameraCenter().copyTo(LastTwc.rowRange(0,3).col(3));
-                //得到上一帧到当前帧的位姿变换
+                //Tcl
 				mVelocity = mCurrentFrame.mTcw*LastTwc;
             }
             else
                 mVelocity = cv::Mat();
-     
+            
+			float vx,vy,vz, vroll,vpitch,vyaw;
+			cv::Mat mRcl = mVelocity.rowRange(0,3).colRange(0,3);
+			cv::Mat mtcl = mVelocity.rowRange(0,3).col(3);
+			
+			cv::Mat mRlc = mRcl.t();
+			cv::Mat mtlc = -mRcl.t()*mtcl;
+
+			
+			cv::Mat eulerLC(3,1,CV_32F);
+			
+			eulerLC = rotationMatrixToEulerAngles(mRlc);
+			vroll  = eulerLC.at<float>(0);
+			vpitch = eulerLC.at<float>(1);
+			vyaw   = eulerLC.at<float>(2);
+			vx     = mtlc.at<float>(0);
+			vy     = mtlc.at<float>(1);
+			vz     = mtlc.at<float>(2);
+			
+			vx /= dt;
+			vy /= dt;
+			vz /= dt;
+			vroll /= dt;
+			vpitch /= dt;
+			vyaw /= dt;
+
+		    if (!previousStamp_)
+		    {
+		        
+			    std::cout <<"not  particleFilters_"<<std::endl;
+				/*
+			    particleFilters_[0]->init(vx);
+				particleFilters_[1]->init(vy);
+				particleFilters_[2]->init(vz);
+				particleFilters_[3]->init(vroll);
+				particleFilters_[4]->init(vpitch);
+				particleFilters_[5]->init(vyaw);
+				*/
+		    }
+			else 
+			{
+			    std::cout <<"particleFilters_"<<std::endl;
+				/*
+				vx = particleFilters_[0]->filter(vx);
+				vy = particleFilters_[1]->filter(vy);
+				vyaw = particleFilters_[5]->filter(vyaw);
+				vz = particleFilters_[2]->filter(vz);
+				vroll = particleFilters_[3]->filter(vroll);
+				vpitch = particleFilters_[4]->filter(vpitch);
+				*/
+			}
+
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+			
 
             // Clean VO matches
             for(int i=0; i<mCurrentFrame.N; i++)
@@ -482,8 +561,11 @@ void Tracking::Track()
                 if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
                     mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);//去除外点
             }
-        }
 
+			previousStamp_ = mCurrentFrame.mTimeStamp;
+        }
+        else	
+		    previousStamp_ = 0;
         // Reset if the camera get lost soon after initialization
         if(mState==LOST)
         {
@@ -1697,6 +1779,34 @@ void Tracking::InformOnlyTracking(const bool &flag)
     mbOnlyTracking = flag;
 }
 
+
+
+cv::Mat Tracking::rotationMatrixToEulerAngles(cv::Mat &R)
+{
+    //assert(isRotationMatrix(R));
+ 
+ //   float sy = sqrt(R.at<double>(0,0) * R.at<double>(0,0) +  R.at<double>(1,0) * R.at<double>(1,0) );
+    float sy = sqrt(R.at<double>(2,1) * R.at<double>(2,1) +  R.at<double>(2,2) * R.at<double>(2,2) );
+ 
+    bool singular = sy < 1e-6; // If
+ 
+ 
+    float x, y, z;
+    if (!singular) {
+        x = atan2(R.at<double>(2,1) , R.at<double>(2,2));
+        y = atan2(-R.at<double>(2,0), sy);
+        z = atan2(R.at<double>(1,0), R.at<double>(0,0));
+    } else {
+        x = atan2(-R.at<double>(1,2), R.at<double>(1,1));
+        y = atan2(-R.at<double>(2,0), sy);
+        z = 0;
+    }
+    cv::Mat DistCoef(3,1,CV_32F);
+    DistCoef.at<float>(0) = x;
+    DistCoef.at<float>(1) = y;
+    DistCoef.at<float>(2) = z;
+    return DistCoef;   
+}
 
 
 } //namespace ORB_SLAM
