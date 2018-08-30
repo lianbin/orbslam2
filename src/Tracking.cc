@@ -797,7 +797,7 @@ void Tracking::CreateInitialMapMonocular()
     Optimizer::GlobalBundleAdjustemnt(mpMap,20);
 
     // Set median depth to 1
-    float medianDepth = pKFini->ComputeSceneMedianDepth(2);
+    float medianDepth = pKFini->ComputeSceneMedianDepth(2);//关键帧看到的MapPoint的深度的中值
     float invMedianDepth = 1.0f/medianDepth;
 
     if(medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)
@@ -809,6 +809,7 @@ void Tracking::CreateInitialMapMonocular()
 
     // Scale initial baseline
     cv::Mat Tc2w = pKFcur->GetPose();
+	//尺度作用在平移上，这个我们已经在<对极几何>中讨论过
     Tc2w.col(3).rowRange(0,3) = Tc2w.col(3).rowRange(0,3)*invMedianDepth;
 	
 	std::cout <<"----------------------------------"<<std::endl;
@@ -1072,6 +1073,7 @@ bool Tracking::TrackWithMotionModel()
     return nmatchesMap>=10;
 }
 
+
 bool Tracking::TrackLocalMap()
 {
     // We have an estimation of the camera pose and some map points tracked in the frame.
@@ -1304,6 +1306,7 @@ void Tracking::CreateNewKeyFrame()
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
 }
+
 
 void Tracking::SearchLocalPoints()
 {
