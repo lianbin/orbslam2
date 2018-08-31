@@ -473,7 +473,8 @@ void Tracking::Track()
             }
             else
                 mVelocity = cv::Mat();
-            
+			//以下是新添加的
+            if (!mVelocity.empty() && 0 == particleFilters_.size()){
 			float vx,vy,vz, vroll,vpitch,vyaw;
 			cv::Mat mRcl = mVelocity.rowRange(0,3).colRange(0,3);
 			cv::Mat mtcl = mVelocity.rowRange(0,3).col(3);
@@ -483,51 +484,69 @@ void Tracking::Track()
 
 			
 			cv::Mat eulerLC(3,1,CV_32F);
-			
+			//返回的欧拉角是弧度值
 			eulerLC = rotationMatrixToEulerAngles(mRlc);
+			//角位移与线位移
 			vroll  = eulerLC.at<float>(0);
 			vpitch = eulerLC.at<float>(1);
 			vyaw   = eulerLC.at<float>(2);
 			vx     = mtlc.at<float>(0);
 			vy     = mtlc.at<float>(1);
 			vz     = mtlc.at<float>(2);
-			
-			vx /= dt;
-			vy /= dt;
-			vz /= dt;
-			vroll /= dt;
-			vpitch /= dt;
-			vyaw /= dt;
-
+			//角度度与线速度
+			if (dt){
+			    vx /= dt;
+			    vy /= dt;
+			    vz /= dt;
+			    vroll /= dt;
+			    vpitch /= dt;
+			    vyaw /= dt;
+			}
 		    if (!previousStamp_)
 		    {
-		        
-			    std::cout <<"not  particleFilters_"<<std::endl;
-				/*
+			    std::cout <<"init  particleFilters_"<<std::endl;
 			    particleFilters_[0]->init(vx);
 				particleFilters_[1]->init(vy);
 				particleFilters_[2]->init(vz);
 				particleFilters_[3]->init(vroll);
 				particleFilters_[4]->init(vpitch);
 				particleFilters_[5]->init(vyaw);
-				*/
 		    }
 			else 
 			{
 			    std::cout <<"particleFilters_"<<std::endl;
-				/*
 				vx = particleFilters_[0]->filter(vx);
 				vy = particleFilters_[1]->filter(vy);
 				vyaw = particleFilters_[5]->filter(vyaw);
 				vz = particleFilters_[2]->filter(vz);
 				vroll = particleFilters_[3]->filter(vroll);
 				vpitch = particleFilters_[4]->filter(vpitch);
-				*/
 			}
-
-            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
 			
+			cv::Mat filteredRotationLc(3,3,CV_32F);
+			cv::Mat filteredTransLc(3,1,CV_32F);
+			cv::Mat Tcl = cv::Mat::eye(4,4,CV_32F);
+            if(dt)
+            {
+			    eulerLC.at<float>(0) = vroll*dt;
+				eulerLC.at<float>(1) = vpitch*dt;
+				eulerLC.at<float>(2) = vyaw*dt;
+                filteredRotationLc = eulerAnglesToRotationMatrix(eulerLC);
 
+				filteredTransLc.at<float>(0) = vx*dt;
+			    filteredTransLc.at<float>(1) = vy*dt;
+			    filteredTransLc.at<float>(2) = vz*dt;
+            }
+
+
+
+			mRcl = filteredRotationLc.t();
+			mtcl = -filteredRotationLc.t()*filteredTransLc;
+			mRcl.copyTo(Tcl.rowRange(0,3).colRange(0,3));
+		    mtcl.copyTo(Tcl.rowRange(0,3).col(3));
+            mVelocity = Tcl;
+            }
+            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
             // Clean VO matches
             for(int i=0; i<mCurrentFrame.N; i++)
             {
@@ -1783,13 +1802,15 @@ void Tracking::InformOnlyTracking(const bool &flag)
 }
 
 
-
 cv::Mat Tracking::rotationMatrixToEulerAngles(cv::Mat &R)
 {
-    //assert(isRotationMatrix(R));
- 
- //   float sy = sqrt(R.at<double>(0,0) * R.at<double>(0,0) +  R.at<double>(1,0) * R.at<double>(1,0) );
-    float sy = sqrt(R.at<double>(2,1) * R.at<double>(2,1) +  R.at<double>(2,2) * R.at<double>(2,2) );
+   // if(!isRotationMatrix(R))
+    {
+       // std::cout <<"not RotationMatrix"<<std::endl;
+		//return cv::Mat();
+    }
+    float sy = sqrt(R.at<double>(0,0) * R.at<double>(0,0) +  R.at<double>(1,0) * R.at<double>(1,0) );
+//    float sy = sqrt(R.at<double>(2,1) * R.at<double>(2,1) +  R.at<double>(2,2) * R.at<double>(2,2) );
  
     bool singular = sy < 1e-6; // If
  
@@ -1809,6 +1830,51 @@ cv::Mat Tracking::rotationMatrixToEulerAngles(cv::Mat &R)
     DistCoef.at<float>(1) = y;
     DistCoef.at<float>(2) = z;
     return DistCoef;   
+}
+
+
+cv::Mat Tracking::eulerAnglesToRotationMatrix(cv::Mat &theta)
+{
+    // 计算旋转矩阵的X分量
+    cv::Mat R_x = (cv::Mat_<float>(3,3) <<
+               1,       0,              0,
+               0,       cos(theta.at<float>(0)),   -sin(theta.at<float>(0)),
+               0,       sin(theta.at<float>(0)),   cos(theta.at<float>(0))
+               );
+ 
+ 
+    // 计算旋转矩阵的Y分量
+    cv::Mat R_y = (cv::Mat_<float>(3,3) <<
+               cos(theta.at<float>(1)),    0,      sin(theta.at<float>(1)),
+               0,               1,      0,
+               -sin(theta.at<float>(1)),   0,      cos(theta.at<float>(1))
+               );
+ 
+ 
+    // 计算旋转矩阵的Z分量
+    cv::Mat R_z = (cv::Mat_<float>(3,3) <<
+               cos(theta.at<float>(2)),    -sin(theta.at<float>(2)),      0,
+               sin(theta.at<float>(2)),    cos(theta.at<float>(2)),       0,
+               0,               0,                  1);
+ 
+ 
+    // 合并 
+    cv::Mat R = R_z * R_y * R_x;
+ 
+ 
+    return R;
+}
+
+/*** 功能：  检查是否是旋转矩阵**/
+bool Tracking::isRotationMatrix(cv::Mat &R)
+{
+    cv::Mat Rt;
+    transpose(R, Rt);
+    cv::Mat shouldBeIdentity = Rt * R;
+    cv::Mat I = cv::Mat::eye(3,3, shouldBeIdentity.type());
+ 
+ 
+    return  cv::norm(I, shouldBeIdentity) < 1e-6;    
 }
 
 

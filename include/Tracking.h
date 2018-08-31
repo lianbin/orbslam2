@@ -144,6 +144,8 @@ protected:
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
 	cv::Mat rotationMatrixToEulerAngles(cv::Mat &R);
+	cv::Mat eulerAnglesToRotationMatrix(cv::Mat &theta);
+	bool isRotationMatrix(cv::Mat &R);
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.

@@ -367,7 +367,7 @@ void System::SaveTrajectoryTUM(const string &filename)
         }
 
         Trw = Trw*pKF->GetPose()*Two;
-
+        //得到的是所有帧的位姿
         cv::Mat Tcw = (*lit)*Trw;
         cv::Mat Rwc = Tcw.rowRange(0,3).colRange(0,3).t();
         cv::Mat twc = -Rwc*Tcw.rowRange(0,3).col(3);
